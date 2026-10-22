@@ -1,0 +1,58 @@
+# ==============================================================================
+# 🧭 Project Metadata & Semantic Identity (project.yaml)
+# 本文件随代码入库，是 Project Catalog / Cloudflare MCP / AI 语义索引的单一真源
+# ==============================================================================
+
+# 1. 核心身份与元数据 (Identity)
+id: "learn-arduino-red"
+name: "learn-arduino-red"
+summary: >
+  简要描述此项目核心解决的问题与职责。
+why: >
+  说明立项的原因或替代了什么老方案。
+
+# 2. 生命周期与项目属性 (Lifecycle & Attributes)
+status: active
+type: tool
+maturity: mvp
+
+# 3. 关联代码仓库 (Repository Fact)
+repo:
+  provider: github
+  owner: epodak
+  name: "learn-arduino-red"
+  default_branch: main
+  visibility: private
+
+# 4. 工作区布局与本地事实 (Workspace)
+# 遵循真源事实法则：仅记录当前实测存在的确凿工作区路径，严禁脑补推测未经验证的跨端路径
+workspace:
+  preferred_name: "learn-arduino-red"
+  locations:
+    windows:
+      - "D:/_AI/10_DOING/learn-arduino-red"
+
+# 5. 项目关系图谱网络 (Relations & Graph)
+relations:
+  belongs_to:
+    - default
+  related: []
+  replaces: []
+
+# 6. 能力标签与技术栈 (Capabilities & Stack)
+capabilities:
+  stack:
+    - python
+  tags:
+    - automation
+    - cli
+
+# 7. 智能体与控制面接入 (Agent Directives)
+agent:
+  docs_portal: "docs/README.md"
+  sync_to_catalog: true
+
+# 8. Optional web presence; publishing requires explicit approval by gproject Portal.
+web:
+  enabled: false
+  sites: []

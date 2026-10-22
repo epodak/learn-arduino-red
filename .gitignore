@@ -1,0 +1,36 @@
+# 12-Factor Environment & Secrets (Agent Relay Hygiene)
+.env
+.env.*
+!.env.example
+config.local.toml
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Run Artifacts
+*.log
+runs/
+dist/
+build/
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+env/
+.pytest_cache/
+
+# Node.js & Package Managers (Strict pnpm Only)
+node_modules/
+.pnpm-store/
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
