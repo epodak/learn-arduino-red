@@ -1,0 +1,27 @@
+{
+  "name": "learn-arduino-growth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Evidence-driven, extensible Arduino 3D learning runtime (independent implementation)",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "capture:reference": "node scripts/capture-reference.mjs",
+    "test": "node --test tests/unit/*.test.js",
+    "test:e2e": "playwright test",
+    "check": "pnpm test && pnpm build && pnpm test:e2e"
+  },
+  "dependencies": {
+    "three": "^0.186.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "vite": "^7.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.34.6"
+}

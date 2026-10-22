@@ -1,0 +1,361 @@
+{
+  "version": 1,
+  "project": "learn-arduino-red",
+  "title": "Learn Arduino Red：原站行为与生长层全景图",
+  "subtitle": "从浏览器和静态资源，到课程/情景模拟、WebGL 交互及尚未实现的独立 scaffold",
+  "updated": "2026-10-22",
+  "frame": {
+    "goal": "把参考站的可观察行为转化为可验证、可扩展的 Arduino 教学应用，同时保持原站证据不可变。",
+    "done": [
+      "12 个语言路由均能启动，课程目录为 16 项",
+      "镜像文件完整且离线运行时没有外联依赖",
+      "源码切片可以逐字节重组回原始非 vendor bundle",
+      "新 scaffold 通过课程/部件/模拟器注册表增加能力，而不是继续扩大全局 switch"
+    ],
+    "yagni": [
+      "未接入真实运行时之前，不宣称执行任意 Arduino C++",
+      "首期不做真实硬件刷写、账号系统、云端课程后台或分析埋点",
+      "未确认许可之前，不把原站 HTML、JS、文案、字体或图片发布到公开仓库"
+    ],
+    "durable": [
+      "REBUILD_PLAN.md 与 docs/engine-notes.md 中的可复核事实",
+      "镜像 manifest、路由/外联账本和可重放的浏览器验收结果（本地保存）",
+      "课程 schema、模拟事件协议、确定性轨迹测试和独立 scaffold"
+    ],
+    "evidence": "infer",
+    "source": "REBUILD_PLAN.md"
+  },
+  "owners": {
+    "os": {
+      "label": "浏览器与操作系统运行时",
+      "control": "none",
+      "hue": "#F2795A"
+    },
+    "origin": {
+      "label": "参考站与其打包产物",
+      "control": "none",
+      "hue": "#9AA4EE"
+    },
+    "ours": {
+      "label": "本地重建工具与新产品代码",
+      "control": "full",
+      "hue": "#3FD9C0"
+    }
+  },
+  "layers": [
+    {
+      "id": "L0",
+      "name": "浏览器运行时",
+      "owner": "os",
+      "desc": "提供 DOM、网络加载、WebGL2 与键盘/鼠标事件；这是浏览器可观测边界，不由本项目控制。",
+      "fault": false,
+      "nodes": [
+        {
+          "id": "L0.webgl2",
+          "title": "浏览器创建 WebGL2 上下文",
+          "owner": "os",
+          "evidence": "fact",
+          "claim": "原站 canvas 在 Chromium 中以 WebGL2 渲染。",
+          "measurement": "Playwright runtime probe: canvas contextType=webgl2; resourceHosts 仅包含 learn-arduino-red.vercel.app。",
+          "gap": "不同 GPU/驱动的性能差异尚未做跨设备测试。",
+          "depends_on": [],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/probe.mjs", "hardware": false, "locks": "浏览器运行时与画布启动契约" }
+          ],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "首次 Playwright 运行时审计，确认 WebGL2 上下文。" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L1",
+      "name": "静态站点与资源交付",
+      "owner": "origin",
+      "desc": "原站通过哈希化 HTML/CSS/JS、字体和图像提供完整的静态客户端应用。",
+      "fault": true,
+      "fault_note": "原始内容由第三方控制；本地静态服务器无法自动复现所有托管平台重定向规则。",
+      "nodes": [
+        {
+          "id": "L1.static-assets",
+          "title": "原站静态资源集完整",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "镜像能覆盖被发现的页面与资源，且可按 manifest 逐文件校验。",
+          "measurement": "verify-mirror: 5/5 checks passed; 71 files; total size about 5.9 MB; zero missing references。",
+          "gap": "公开站点没有提供可验证的源码再发布许可证。",
+          "depends_on": ["L0.webgl2"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/verify-mirror.mjs", "hardware": false, "locks": "镜像完整性、URL 映射和资源引用闭包" }
+          ],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "完成 Playwright 资源采集与 mirror manifest 校验。" }
+          ]
+        },
+        {
+          "id": "L1.redirect-contract",
+          "title": "无尾斜杠路由的 308 规则",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "原站为 11 个语言路径保留无尾斜杠到有尾斜杠的永久重定向。",
+          "measurement": "mirror/redirects.tsv 中记录 11 条 308 规则；本地 serve.mjs 因两条路径映射到同一文件而跳过自循环重定向。",
+          "gap": "实际部署前需将规则写入托管层配置并单独验证。",
+          "depends_on": ["L1.static-assets"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/verify-offline.mjs", "hardware": false, "locks": "本地路由可访问性与重定向偏差记录" }
+          ],
+          "incidents": ["INC-01"],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "发现本地文件服务器与原站托管重定向的语义差异。" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L2",
+      "name": "入口、路由与多语言",
+      "owner": "origin",
+      "desc": "入口 JS 解析语言并动态加载主 UI、stage 和 locale 数据。",
+      "fault": false,
+      "nodes": [
+        {
+          "id": "L2.bundle-graph",
+          "title": "16 个哈希 JS bundle 的依赖关系",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "入口、主 UI、stage、Three.js kit、缩略图工具和 11 个 locale chunk 构成客户端运行时。",
+          "measurement": "census-bundles: 16 JS chunks; main=131218 bytes; stage=424589 bytes; kit=316523 bytes; no source map references observed。",
+          "gap": "静态导入图不完整表达 index bundle 中的动态 import()；语言边以入口映射为准。",
+          "depends_on": ["L1.static-assets"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/census-bundles.mjs", "hardware": false, "locks": "bundle 清单、静态导入/导出与 chunk 大小" }
+          ],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "生成 bundle census 与静态导入图，补充动态导入盲区。" }
+          ]
+        },
+        {
+          "id": "L2.locale-router",
+          "title": "12 个语言路由与 locale 选择",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "英语为基线，其余 11 个语言包按路由/偏好动态加载。",
+          "measurement": "Playwright route sweep: 12/12 paths returned HTTP 200; every route became app-ready and rendered 16 lesson items。",
+          "gap": "locale map 使用英文原文作为翻译键，文案重命名容易造成映射漂移。",
+          "depends_on": ["L2.bundle-graph"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/probe.mjs", "hardware": false, "locks": "语言路由与应用启动契约" }
+          ],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "确认 12 个语言路由并记录 locale bundle 清单。" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L3",
+      "name": "课程数据与情景模拟",
+      "owner": "origin",
+      "desc": "课程对象携带示例代码、部件/引脚信息、参数和模拟器 ID；运行按钮按 ID 选择预定义情景。",
+      "fault": true,
+      "fault_note": "课程数据和模拟器行为分散在不同 bundle，增加新行为容易形成全局分支耦合。",
+      "nodes": [
+        {
+          "id": "L3.lesson-catalog",
+          "title": "16 个课程定义",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "主 bundle 中的课程数组是课程顺序、展示内容和模拟器 ID 的主要事实源。",
+          "measurement": "main-DjJVc0Xg.js pretty coordinate line 194 begins array g; DOM route sweep confirms 16 lesson items。",
+          "gap": "课程数据与 UI 组件未拆成独立、可 schema 校验的模块。",
+          "depends_on": ["L2.bundle-graph"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/beautify-bundle.mjs", "hardware": false, "locks": "课程数组可审计坐标" },
+            { "path": ".agents/skills/website-rebuild/scripts/probe.mjs", "hardware": false, "locks": "DOM 中的课程数量和顺序" }
+          ],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "将 16 个课程 ID 与 UI 路由行为对齐。" }
+          ]
+        },
+        {
+          "id": "L3.scenario-engine",
+          "title": "按 sim ID 分派的预定义情景",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "运行时由情景工厂创建特定的传感器/部件状态与事件，不执行任意 C++ 文本。",
+          "measurement": "stage-q31hSPBm.js pretty coordinate line 12290 contains ms(t, a); 15 branches, with sensor/project sharing a branch。",
+          "gap": "新课程/新物理行为需要修改情景工厂；多个分支使用 Math.random()。",
+          "depends_on": ["L3.lesson-catalog"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/beautify-bundle.mjs", "hardware": false, "locks": "情景工厂和分支清单可定位" },
+            { "path": ".agents/skills/website-rebuild/scripts/verify-reassembly.mjs", "hardware": false, "locks": "分析切片不改变原始 bundle 字节" }
+          ],
+          "incidents": ["INC-02"],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "确认 runSketch 传入 sim ID，而非代码文本。" }
+          ]
+        },
+        {
+          "id": "L3.code-execution-contract",
+          "title": "示例代码与模拟执行的边界",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "代码区只展示示例，Run sketch 使用课程 sim ID 驱动情景动画。",
+          "measurement": "main-DjJVc0Xg.js line 4982 calls K.runSketch(e.sim); initial DOM has no textarea/contenteditable; stage runSketch at line 14117 accepts scenario ID and callbacks。",
+          "gap": "UI 文案中的 compile/upload 状态容易被误解为真实编译。",
+          "depends_on": ["L3.lesson-catalog", "L3.scenario-engine"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/probe.mjs", "hardware": false, "locks": "代码区可编辑性和运行流程的浏览器观察" }
+          ],
+          "incidents": ["INC-02"],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "把“模拟情景”与“真实编译执行”区分为两个不同契约。" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L4",
+      "name": "Three.js 场景与部件状态",
+      "owner": "origin",
+      "desc": "Three.js/WebGL2 生成板卡、部件、灯光、锚点和可选取对象；模拟状态驱动场景更新。",
+      "fault": true,
+      "fault_note": "场景和交互逻辑耦合在大 bundle；随机输入使部分轨迹不确定。",
+      "nodes": [
+        {
+          "id": "L4.webgl-scene",
+          "title": "程序化 Three.js 场景",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "场景使用 WebGL2 与 Three.js revision 186；没有独立 GLB/GLTF 模型资源。",
+          "measurement": "kit-BvosHktf.js revision=186; Playwright canvas contextType=webgl2; 3D 几何由 stage JS 构造。",
+          "gap": "原站部件标签的点击意图与 picking 契约仍需进一步确认。",
+          "depends_on": ["L3.scenario-engine"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/probe.mjs", "hardware": false, "locks": "WebGL canvas 和 3D 资源加载契约" }
+          ],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "确认 WebGL2、Three.js r186 和程序化场景生成。" }
+          ]
+        },
+        {
+          "id": "L4.randomness",
+          "title": "传感器模拟中的随机扰动",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "多个传感器情景直接调用 Math.random()，因此轨迹并非完全确定。",
+          "measurement": "stage pretty lines 12459, 12518, 12731, 12786, 12883, 12955 contain Math.random() calls。",
+          "gap": "没有原站注入随机种子的测试接口。",
+          "depends_on": ["L3.scenario-engine"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/beautify-bundle.mjs", "hardware": false, "locks": "情景代码可定位和检查" }
+          ],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "发现多处分支使用全局随机数，记录为新架构的确定性要求。" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L5",
+      "name": "可见 UI 与交互契约",
+      "owner": "origin",
+      "desc": "课程导航、PINOUT、部件标签、代码展示、串口监视器和相机控件向用户呈现运行状态。",
+      "fault": true,
+      "fault_note": "部分可见按钮的 aria-label 为空；3D 标签的指针操作不稳定。",
+      "nodes": [
+        {
+          "id": "L5.interactions",
+          "title": "课程、PINOUT、运行与相机交互",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "主流程可通过浏览器自动化驱动，并在 UI 上观察到状态变化。",
+          "measurement": "12/12 routes 200; PINOUT tab, keyboard lesson selection, run-scenario flow and camera rotation passed; zero runtime external requests。",
+          "gap": "部件标签的指针语义仍未确认；本地 308 重定向与源站不同。",
+          "depends_on": ["L3.code-execution-contract", "L4.webgl-scene"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/probe.mjs", "hardware": false, "locks": "浏览器交互和运行时观察" },
+            { "path": ".agents/skills/website-rebuild/scripts/verify-offline.mjs", "hardware": false, "locks": "离线资源闭包和静态外联" }
+          ],
+          "incidents": ["INC-01", "INC-02", "INC-03"],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "完成全路由扫查与关键交互烟测。" }
+          ]
+        },
+        {
+          "id": "L5.accessibility",
+          "title": "控件可访问名称与部件选择语义",
+          "owner": "origin",
+          "evidence": "fact",
+          "claim": "部分动态按钮具有空 aria-label；可见文字不总能作为自动化/辅助技术的 accessible name。",
+          "measurement": "Playwright DOM dump reports empty ariaLabel on visible part labels and PINOUT; role-name locators failed while CSS text locators could find PINOUT。",
+          "gap": "尚未确认 USB PORT 标签是否设计为可点击控件；需要明确语义并提供键盘等价操作。",
+          "depends_on": ["L5.interactions", "L4.webgl-scene"],
+          "probes": [
+            { "path": ".agents/skills/website-rebuild/scripts/probe.mjs", "hardware": false, "locks": "DOM 控件属性和可访问名称检查" }
+          ],
+          "incidents": ["INC-03"],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "定位到空 aria-label 与 3D 标签交互不明确的问题。" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "L6",
+      "name": "独立生长型 scaffold（MVP 已建）",
+      "owner": "ours",
+      "desc": "把课程、部件、模拟器、事件流和 UI 投影建成可扩展的独立代码，不依赖原站 minified bundle。",
+      "fault": false,
+      "nodes": [
+        {
+          "id": "L6.growth-scaffold",
+          "title": "数据驱动的课程与模拟器注册表",
+          "owner": "ours",
+          "evidence": "fact",
+          "claim": "独立 scaffold 已可构建与测试：16 门课程、11 种模拟器、事件重放和 Three.js 场景；但不宣称原站逐像素等价。",
+          "measurement": "scaffold: pnpm test 9/9；pnpm build PASS；Playwright desktop/mobile 12 路由及交互通过。",
+          "gap": "课程翻译未全覆盖、物理电路求解未实现、Arduino 代码编译/运行未实现；需完成课程判卷与跨版本轨迹。",
+          "depends_on": ["L3.lesson-catalog", "L3.scenario-engine", "L5.interactions"],
+          "probes": [
+            { "path": "scaffold/tests/unit/runtime.test.js", "hardware": false, "locks": "课程注册、事件重放与可扩展性合同" },
+            { "path": "scaffold/tests/e2e/smoke.spec.js", "hardware": false, "locks": "多语言路由、UI 交互、无外联与响应式测试" }
+          ],
+          "history": [
+            { "date": "2026-10-22", "base_commit": "2e99d77", "note": "从原站事实编写独立可运行 scaffold，通过单元和浏览器测试。" }
+          ]
+        }
+      ]
+    }
+  ],
+  "incidents": [
+    {
+      "id": "INC-01",
+      "state": "accepted",
+      "title": "本地文件服务器不逐字节复现 308 slash redirect",
+      "where": "L1↔L5",
+      "cause": "本地 server 将 /es 与 /es/ 映射到同一个 index.html，按源规则重定向会形成自循环。",
+      "fix": "保留源站 redirects.tsv；实际部署前在托管配置中显式定义 canonical slash redirect 并单独验证。",
+      "locked_by": [".agents/skills/website-rebuild/scripts/verify-offline.mjs"],
+      "nodes": ["L1.redirect-contract", "L5.interactions"]
+    },
+    {
+      "id": "INC-02",
+      "state": "open",
+      "title": "Run sketch 的编译文案与情景模拟执行脱耦",
+      "where": "L3↔L5",
+      "cause": "运行路径使用 lesson.sim 分派预定义情景，代码展示文本没有进入编译/解释器。",
+      "fix": "首期明确标为情景模拟；定义统一 SketchRuntime 接口，真实执行器作为后续独立能力。",
+      "nodes": ["L3.scenario-engine", "L3.code-execution-contract", "L5.interactions"]
+    },
+    {
+      "id": "INC-03",
+      "state": "open",
+      "title": "动态部件标签的可访问名称和点击语义不明确",
+      "where": "L4↔L5",
+      "cause": "部分动态按钮使用空 aria-label，3D 标注层与 picking 事件之间没有稳定的可测试契约。",
+      "fix": "新 scaffold 使用稳定 partId、非空 accessible name、键盘可操作的部件列表和统一选择事件。",
+      "nodes": ["L4.webgl-scene", "L5.accessibility"]
+    }
+  ]
+}

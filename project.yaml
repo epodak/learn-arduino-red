@@ -7,14 +7,14 @@
 id: "learn-arduino-red"
 name: "learn-arduino-red"
 summary: >
-  简要描述此项目核心解决的问题与职责。
+  面向 Arduino 初学者的可生长 3D 教学与情景模拟应用；当前处于原站取证、验证和架构设计阶段。
 why: >
-  说明立项的原因或替代了什么老方案。
+  先以 Playwright 镜像和验证门建立可信行为规格，再将课程、部件、模拟器和 3D 渲染重构为可插拔的独立架构。原站派生文件仅本地保存；公开仓库不包含未经许可的原站资产或源码切片。
 
 # 2. 生命周期与项目属性 (Lifecycle & Attributes)
 status: active
-type: tool
-maturity: mvp
+type: product
+maturity: skeleton
 
 # 3. 关联代码仓库 (Repository Fact)
 repo:
@@ -22,7 +22,7 @@ repo:
   owner: epodak
   name: "learn-arduino-red"
   default_branch: main
-  visibility: private
+  visibility: public
 
 # 4. 工作区布局与本地事实 (Workspace)
 # 遵循真源事实法则：仅记录当前实测存在的确凿工作区路径，严禁脑补推测未经验证的跨端路径
@@ -42,10 +42,16 @@ relations:
 # 6. 能力标签与技术栈 (Capabilities & Stack)
 capabilities:
   stack:
-    - python
+    - nodejs
+    - pnpm
+    - playwright
+    - threejs
   tags:
-    - automation
-    - cli
+    - education
+    - webgl
+    - simulation
+    - i18n
+    - website-rebuild
 
 # 7. 智能体与控制面接入 (Agent Directives)
 agent:

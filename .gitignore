@@ -16,6 +16,14 @@ dist/
 build/
 .cache/
 
+# Local-only forensic evidence for third-party website reconstruction.
+# Keep the mirror and probe outputs out of the public GitHub repository until
+# the owner has reviewed the source site's rights and publication decision.
+/mirror/
+/probe/
+/port/
+/src/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -27,6 +35,8 @@ env/
 
 # Node.js & Package Managers (Strict pnpm Only)
 node_modules/
+scaffold/test-results/
+scaffold/playwright-report/
 .pnpm-store/
 package-lock.json
 yarn.lock

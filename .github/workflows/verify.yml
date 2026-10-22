@@ -1,0 +1,44 @@
+name: verify-growth-scaffold
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'scaffold/**'
+      - '.github/workflows/verify.yml'
+  pull_request:
+    paths:
+      - 'scaffold/**'
+      - '.github/workflows/verify.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  growth-runtime:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: scaffold
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: scaffold/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - name: Browser test traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure
+          path: scaffold/test-results/
+          retention-days: 7

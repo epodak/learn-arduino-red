@@ -1,0 +1,17 @@
+#!/bin/sh
+# 全景图 + 验证工装台提交门 —— 任一退出码非 0 即阻断提交
+# 门内只卡「现在就是错的」: malformed/blind/ghosts/crosslink/rootless
+# overclaim/unreachable/unpromoted/aliasless 刻意在门外 —— 认知债是工作项不是提交错误
+[ -f .agents/panorama.json ] || exit 0
+if command -v pan >/dev/null 2>&1; then
+  pan lint --gate || exit 1
+else
+  echo "pan is required to validate .agents/panorama.json" >&2
+  exit 1
+fi
+[ -f .agents/harness.json ] || exit 0
+if command -v vh >/dev/null 2>&1; then
+  vh lint --gate || exit 1
+else
+  python "C:/Users/root/.agents/skills/verification-harness/scripts/harness_lint.py" .agents/harness.json --repo . --gate || exit 1
+fi

@@ -1,0 +1,268 @@
+{
+  "version": 1,
+  "project": "learn-arduino-red",
+  "title": "Learn Arduino Red：镜像验证与生长架构工装台",
+  "updated": "2026-10-22",
+  "ladder": {
+    "level": "L3",
+    "capabilities": [
+      {
+        "id": "run",
+        "level": "L2",
+        "title": "冷启动本地静态 port",
+        "how": "node .cache/playwright-capture/port-smoke.mjs",
+        "status": "fact",
+        "evidence": "PASS：/, /es/ 和 /zh/ 均返回 200；每路由 16 个课程项；WebGL2；无外部请求、失败资源或浏览器错误。",
+        "notes": "需要本地 port/ 和 .cache/playwright-capture/node_modules/playwright；这些证据产物被 gitignore，不存在于干净克隆中。"
+      },
+      {
+        "id": "test",
+        "level": "L1",
+        "title": "运行镜像完整性和源码重组验证",
+        "how": "node .agents/skills/website-rebuild/scripts/verify-mirror.mjs --mirror mirror --allow-missing mirror/external.txt && node .agents/skills/website-rebuild/scripts/verify-reassembly.mjs --dir src/readable --against port/assets",
+        "status": "fact",
+        "evidence": "verify-mirror 5/5 checks passed；verify-reassembly 15 decompositions passed，0 mismatches。",
+        "notes": "依赖本地 mirror/、port/ 和 src/；原站派生文件不会进入公开 Git。"
+      },
+      {
+        "id": "drive",
+        "level": "L3",
+        "title": "通过 Playwright 操作页面并读取运行时证据",
+        "how": "node .cache/playwright-capture/interaction-check.mjs",
+        "status": "fact",
+        "evidence": "PINOUT 切换、键盘选课、情景运行和相机旋转通过；USB PORT 标签的点击语义仍未确认。",
+        "notes": "交互脚本和运行报告为本地证据；不要把部件标签点击未确认误报成整个页面不可用。"
+      },
+      {
+        "id": "observe",
+        "level": "L3",
+        "title": "观察 WebGL、路由、存储与资源边界",
+        "how": "node .cache/playwright-capture/extra-facts.mjs",
+        "status": "fact",
+        "evidence": "WebGL2 context；没有 Service Worker 和 source-map 引用；资源 host 仅为 learn-arduino-red.vercel.app。",
+        "notes": "初始 localStorage 为空不代表没有持久化；源码中存在语言、完成进度、设置、参数和面板高度的存储键。"
+      },
+      {
+        "id": "reproduce",
+        "level": "L4",
+        "title": "从模糊描述自主生成完整生长版应用",
+        "how": "尚未具备；先按 REBUILD_PLAN.md §8 确认严格 1:1 复刻或独立 scaffold 路径。",
+        "status": "unknown",
+        "evidence": null,
+        "notes": "当前完成的是证据采集、bundle 盘点和架构方案；尚未实现独立产品源码。"
+      }
+    ]
+  },
+  "features": [
+    {
+      "id": "mirror-integrity",
+      "name": "原站镜像完整性",
+      "aliases": ["页面没下载全", "资源 404", "mirror 校验", "镜像损坏"],
+      "autonomy": "review-diff",
+      "owner": "ours",
+      "entry": {
+        "steps": [
+          "确认本地 mirror/ 由 website-rebuild-skill 采集完成",
+          "运行 verify-mirror.mjs 并检查输出中的 missing references 和映射冲突"
+        ],
+        "preconditions": ["本地存在 mirror/mirror-manifest.json 和 mirror/external.txt"]
+      },
+      "surface": [
+        ".agents/skills/website-rebuild/scripts/verify-mirror.mjs",
+        "docs/engine-notes.md",
+        "REBUILD_PLAN.md"
+      ],
+      "verify": {
+        "kind": "executable",
+        "how": "node .agents/skills/website-rebuild/scripts/verify-mirror.mjs --mirror mirror --allow-missing mirror/external.txt",
+        "expect": "PASS 5/5 checks；71 files；zero missing references。",
+        "manual_check": null
+      },
+      "evidence_hooks": ["verify-mirror PASS", "mirror-manifest file count and SHA-256"],
+      "panorama_nodes": ["L1.static-assets"],
+      "last_verified": {
+        "at": "2026-10-22",
+        "by": "agent",
+        "result": "pass",
+        "note": "镜像校验通过；派生站点文件保持 gitignored。"
+      }
+    },
+    {
+      "id": "offline-runtime",
+      "name": "离线资源闭包与语言路由扫查",
+      "aliases": ["外联请求", "offline check", "页面离线打不开", "语言路由"],
+      "autonomy": "review-diff",
+      "owner": "ours",
+      "entry": {
+        "steps": [
+          "确认本地 mirror/ 与 Playwright 捕获工具已存在",
+          "运行 offline-check.mjs 并检查 routeProblems、failedRequests、externalRequests 和 browserErrors"
+        ],
+        "preconditions": ["本地存在 .cache/playwright-capture/node_modules/playwright"]
+      },
+      "surface": [
+        ".agents/skills/website-rebuild/scripts/verify-offline.mjs",
+        "docs/engine-notes.md",
+        "REBUILD_PLAN.md"
+      ],
+      "verify": {
+        "kind": "executable",
+        "how": "node .cache/playwright-capture/offline-check.mjs",
+        "expect": "PASS；12/12 路由 HTTP 200；16 个课程项；0 个失败资源、0 个外部请求、0 个非预期浏览器错误。",
+        "manual_check": null
+      },
+      "evidence_hooks": ["routeProblems", "failedRequests", "externalRequests", "browserErrors", "appReady"],
+      "panorama_nodes": ["L1.static-assets", "L1.redirect-contract", "L2.locale-router", "L5.interactions"],
+      "last_verified": {
+        "at": "2026-10-22",
+        "by": "agent",
+        "result": "pass",
+        "note": "本地 308 重定向差异作为已知托管层偏差记录，不误报为资源失败。"
+      }
+    },
+    {
+      "id": "source-reassembly",
+      "name": "原始 bundle 的字节保持切片",
+      "aliases": ["JS 切片", "sourceify", "重组校验", "代码重生"],
+      "autonomy": "review-diff",
+      "owner": "ours",
+      "entry": {
+        "steps": [
+          "确认 port/assets 中的原始 JS bundle 未被修改",
+          "运行 slice-esm.mjs 生成 src/readable/ 分解",
+          "运行 verify-reassembly.mjs 并确认 0 mismatches"
+        ],
+        "preconditions": ["本地存在 port/assets 和 src/readable"]
+      },
+      "surface": [
+        ".agents/skills/website-rebuild/scripts/slice-esm.mjs",
+        ".agents/skills/website-rebuild/scripts/verify-reassembly.mjs",
+        "docs/engine-notes.md"
+      ],
+      "verify": {
+        "kind": "executable",
+        "how": "node .agents/skills/website-rebuild/scripts/verify-reassembly.mjs --dir src/readable --against port/assets",
+        "expect": "15 decompositions passed；0 mismatches。",
+        "manual_check": null
+      },
+      "evidence_hooks": ["slices.json source hash", "reassembly SHA-256", "vendor kit remains intact"],
+      "panorama_nodes": ["L2.bundle-graph", "L3.lesson-catalog", "L3.scenario-engine"],
+      "last_verified": {
+        "at": "2026-10-22",
+        "by": "agent",
+        "result": "pass",
+        "note": "这是字节保持的取证切片，不是完成语义重写的可维护源码。"
+      }
+    },
+    {
+      "id": "browser-interactions",
+      "name": "课程、部件与运行流程的浏览器交互",
+      "aliases": ["PINOUT 不工作", "Run sketch", "USB PORT 点击", "相机旋转"],
+      "autonomy": "manual",
+      "owner": "origin",
+      "entry": {
+        "steps": [
+          "冷启动本地镜像服务器",
+          "打开首页并等待 #app 解除 inert",
+          "分别验证 PINOUT、键盘选课、Run sketch 和相机旋转"
+        ],
+        "preconditions": ["Playwright 浏览器已安装且支持 WebGL2"]
+      },
+      "surface": [
+        ".agents/skills/website-rebuild/scripts/probe.mjs",
+        "docs/engine-notes.md"
+      ],
+      "verify": {
+        "kind": "executable",
+        "how": "node .cache/playwright-capture/interaction-check.mjs",
+        "expect": "PINOUT、键盘选课、情景运行、相机旋转通过；USB PORT 标签点击语义保留为待确认项。",
+        "manual_check": null
+      },
+      "evidence_hooks": ["DOM text", "serial monitor text", "selected lesson ID", "camera state"],
+      "panorama_nodes": ["L3.code-execution-contract", "L4.webgl-scene", "L5.interactions", "L5.accessibility"],
+      "last_verified": {
+        "at": "2026-10-22",
+        "by": "agent",
+        "result": "partial",
+        "note": "关键主流程通过，但不能把部件标签当作已确认可点击控件。"
+      }
+    },
+    {
+      "id": "growth-scaffold",
+      "name": "独立课程/部件/模拟器 scaffold",
+      "aliases": ["新增第 17 课", "怎么加一个传感器", "让项目能生长", "模拟器插件"],
+      "autonomy": "review-diff",
+      "owner": "ours",
+      "entry": {
+        "steps": [
+          "阅读 PRODUCT.md 和 docs/architecture/重建与生长架构.md",
+          "进入 scaffold/ 执行 pnpm install、pnpm test、pnpm build、pnpm test:e2e",
+          "按课程注册表与模拟器注册表扩展数据/插件，使用事件轨迹和浏览器回归收口"
+        ],
+        "preconditions": ["已安装 pnpm 与 Playwright Chromium；新代码不得依赖本地镜像运行时"]
+      },
+      "surface": [
+        "PRODUCT.md",
+        "DESIGN.md",
+        "docs/architecture/重建与生长架构.md",
+        "REBUILD_PLAN.md"
+      ],
+      "verify": {
+        "kind": "executable",
+        "how": "cd scaffold && pnpm test && pnpm build && pnpm test:e2e",
+        "expect": "单元测试全绿、Vite build 通过；Playwright 12 语言路由、交互和零外联断言通过。",
+        "manual_check": null
+      },
+      "evidence_hooks": ["lesson registry count", "simulator registry resolution", "deterministic event trace", "new lesson diff surface"],
+      "panorama_nodes": ["L6.growth-scaffold"],
+      "last_verified": {
+        "at": "2026-10-22",
+        "by": "agent",
+        "result": "pass",
+        "note": "scaffold 已可独立构建与运行；这只证明首轮自有产品合同，不证明原站像素级等价。"
+      }
+    }
+  ],
+  "failure_modes": [
+    {
+      "id": "FM-01",
+      "observed": "把界面上的 Compiling/Uploading 文案当作真实 Arduino C++ 编译与执行的证据。",
+      "why": "运行路径实际传入 lesson.sim，并由预定义情景分支驱动；示例代码没有进入编译器。",
+      "rule": "除非能证明源代码进入解析/执行器且修改代码会改变运行轨迹，否则只能称为情景模拟，不得声称真实编译或硬件上传。",
+      "cases": ["2026-10-22: docs/engine-notes.md §5", "2026-10-22: REBUILD_PLAN.md §2 question 7"],
+      "check": "检查 main 的 runSketch 调用参数是否包含源代码，并为真实运行时增加编辑代码后轨迹变化的自动化测试。",
+      "promoted_to": "docs/engine-notes.md §5; docs/architecture/重建与生长架构.md §6",
+      "status": "promoted"
+    },
+    {
+      "id": "FM-02",
+      "observed": "使用 getByRole 按文字定位空 aria-label 的按钮，并对动画中的 3D 标签直接做指针点击。",
+      "why": "空 aria-label 会覆盖可见文字的 accessible name；3D 标注层的选择语义和事件绑定尚未稳定。",
+      "rule": "逆向阶段先检查真实 DOM 属性与可访问名称；新实现必须使用非空名称、稳定 partId 和键盘等价入口。",
+      "cases": ["2026-10-22: probe/playwright/routes.json", "2026-10-22: probe/offline/interaction-check.json"],
+      "check": "Playwright 检查所有可见按钮的 accessible name 非空，并验证鼠标与键盘选择同一 partId。",
+      "promoted_to": "docs/architecture/重建与生长架构.md §8; DESIGN.md",
+      "status": "promoted"
+    },
+    {
+      "id": "FM-03",
+      "observed": "运行网页重建脚本时使用 npm/npx，或把 pretty-printed JS 写回 mirror/。",
+      "why": "默认脚本行为与本项目的 pnpm 约束及镜像不可变边界冲突。",
+      "rule": "只使用 pnpm/pnpm dlx；格式化坐标写入 probe/_pretty；mirror/ 和 port/ 的原始资产不得被格式化覆盖。",
+      "cases": ["2026-10-22: docs/engineering/网站重建技能的本地兼容补丁.md"],
+      "check": "检查 scripts/lib/npx.mjs 与 beautify-bundle.mjs 的默认命令/输出目录，并在运行前后比较原始资产 SHA-256。",
+      "promoted_to": "docs/engineering/网站重建技能的本地兼容补丁.md",
+      "status": "promoted"
+    },
+    {
+      "id": "FM-04",
+      "observed": "Windows Node 24 下，在 fetch 请求仍有待关闭句柄时调用 process.exit()，触发 UV_HANDLE_CLOSING assertion。",
+      "why": "强制退出绕过 Undici/libuv 的句柄关闭过程。",
+      "rule": "验证脚本使用 process.exitCode 并让异步句柄自然排空；修改退出逻辑后必须在目标 Windows 环境重跑。",
+      "cases": ["2026-10-22: verify-offline.mjs 的本地退出 assertion"],
+      "check": "在 Windows Node 24 运行 verify-offline.mjs，要求退出码为 0 且 stderr 无 assertion。",
+      "promoted_to": "docs/engineering/网站重建技能的本地兼容补丁.md §4",
+      "status": "promoted"
+    }
+  ]
+}

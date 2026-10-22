@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agents.local/schemas/panorama-1.json",
+  "title": "System Panorama",
+  "description": "系统全景图数据契约 v1。层级 × 归属 × 证据等级三维叠加的架构与验证状态地图。与工具无关：任何 AI agent 或人类只需读写本 JSON。渲染产物是派生物。",
+  "type": "object",
+  "required": ["version", "project", "owners", "layers"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1, "description": "契约版本" },
+    "project": { "type": "string", "description": "项目名（显示在图上）" },
+    "title": { "type": "string", "description": "渲染标题。缺省时用「<project> 全景图」" },
+    "subtitle": { "type": "string", "description": "一句话说明这张图覆盖什么" },
+    "updated": { "type": "string", "description": "最后更新日期 YYYY-MM-DD" },
+
+    "frame": {
+      "type": "object",
+      "description": "项目战略框架：为什么做、怎么算赢、刻意不做什么、什么值得长期留存。它包着层级栈的表层框，不参与 层级×归属×证据 三维坐标，而是回答『这场赌注是什么』。",
+      "additionalProperties": false,
+      "properties": {
+        "goal": { "type": "string", "description": "一句意图：为什么做这个项目，不是流程而是为什么" },
+        "done": { "type": "array", "items": { "type": "string" }, "description": "怎么算赢（Definition of Done 的可验证层级）" },
+        "yagni": { "type": "array", "items": { "type": "string" }, "description": "明确不做 / 边界（YAGNI）" },
+        "durable": { "type": "array", "items": { "type": "string" }, "description": "什么值得长期留存（耐久资产）" },
+        "evidence": { "enum": ["fact", "infer", "unknown", "none"], "description": "goal 的证据等级。项目最大的假设默认是 infer，首个真实案例落地后升 fact 并补 measurement。" },
+        "source": { "type": "string", "description": "出处文档（仓库相对路径）" }
+      }
+    },
+    "owners": {
+      "type": "object",
+      "description": "归属定义。键是短标识，供节点引用。至少要有一个 control=full（我们自己）与一个 control=none（黑盒），否则这张图丢掉了归属维度的意义。",
+      "minProperties": 2,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["label", "control"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string", "description": "显示名，如「操作系统」「我们的代码」" },
+          "control": {
+            "enum": ["full", "config", "none"],
+            "description": "full=能改源码；config=只能配置不能改实现；none=完全黑盒，行为只能实测不能推理"
+          },
+          "hue": { "type": "string", "description": "可选，渲染色相 hex，如 #F2795A" }
+        }
+      }
+    },
+
+    "layers": {
+      "type": "array",
+      "minItems": 2,
+      "description": "自「离我们最远/最不可控」到「用户直接看到的行为」排序。",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "owner", "nodes"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^L[0-9]+$", "description": "L0, L1, …" },
+          "name": { "type": "string" },
+          "owner": { "type": "string", "description": "owners 里的键" },
+          "desc": { "type": "string", "description": "这一层对上层承诺了什么（有效描述）" },
+          "fault": {
+            "type": "boolean",
+            "description": "标记断层带：我们不拥有、行为由外部决定、事故高发的层。渲染时会加警示。"
+          },
+          "fault_note": { "type": "string" },
+          "nodes": { "type": "array", "items": { "$ref": "#/definitions/node" } }
+        }
+      }
+    },
+
+    "incidents": {
+      "type": "array",
+      "description": "事故台账。事故位置的聚集是全图最有价值的信号。",
+      "items": {
+        "type": "object",
+        "required": ["id", "state", "title"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "description": "如 INC-01" },
+          "state": { "enum": ["open", "fixed", "accepted"], "description": "accepted=已知且决定不修" },
+          "title": { "type": "string" },
+          "where": { "type": "string", "description": "落在哪一层或哪两层的交界，如 L2↔L3" },
+          "cause": { "type": "string", "description": "根因。写认知层面的根因，不是那一行代码。" },
+          "fix": { "type": "string" },
+          "locked_by": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "锁住它不再复发的测试/探针路径。fixed 但没有 locked_by 会被 lint 报出——修了没锁等于没修。"
+          },
+          "nodes": { "type": "array", "items": { "type": "string" }, "description": "涉及的节点 id" }
+        }
+      }
+    }
+  },
+
+  "definitions": {
+    "node": {
+      "type": "object",
+      "required": ["id", "title", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "description": "全局唯一，建议 <层id>.<短名>" },
+        "title": { "type": "string", "description": "一件会独立出错的事，不是一个函数" },
+        "owner": { "type": "string", "description": "省略则继承所在层的 owner" },
+
+        "evidence": {
+          "enum": ["fact", "infer", "unknown", "none"],
+          "description": "fact=有可复现读数或自动化测试；infer=从行为反推或沿用经验值；unknown=既无读数也无结论（最有价值的一类，务必写出来）；none=系统具备但我们从未对接（是边界不是缺口）"
+        },
+
+        "claim": { "type": "string", "description": "我们认为它是怎样的" },
+        "measurement": { "type": "string", "description": "实测读数原文。evidence=fact 时强烈建议填。" },
+        "gap": { "type": "string", "description": "还缺什么、什么条件下会失效" },
+
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "本节点的正确性依赖哪些下层节点。lint 用它检测悬空：证据等级不得高于依赖项的最低等级。"
+        },
+
+        "probes": {
+          "type": "array",
+          "description": "能观测/验证本节点的脚本。evidence=fact 却没有探针会被 lint 报出。",
+          "items": {
+            "type": "object",
+            "required": ["path"],
+            "additionalProperties": false,
+            "properties": {
+              "path": { "type": "string", "description": "仓库相对路径" },
+              "hardware": { "type": "boolean", "description": "是否需要真机/外部设备。false 的应当进 CI。" },
+              "locks": { "type": "string", "description": "它锁住的是什么契约" }
+            }
+          }
+        },
+
+        "incidents": { "type": "array", "items": { "type": "string" }, "description": "关联事故 id" },
+        "note": { "type": "string" },
+
+        "history": {
+          "type": "array",
+          "description": "本节点的认知历史轨迹：什么时候发现的、指向哪次提交范围。按时间正序追加，不要改写旧条目。",
+          "items": {
+            "type": "object",
+            "required": ["date", "base_commit"],
+            "additionalProperties": false,
+            "properties": {
+              "date": { "type": "string", "description": "发现/记录日期 YYYY-MM-DD" },
+              "base_commit": {
+                "type": "string",
+                "description": "记录这条轨迹时当前的 HEAD 短哈希（即改动前的父 commit，git rev-parse --short HEAD 即可拿到）。这个值在记录时就已确定，永远不需要回填。pan 命令会在运行时用 git log <base_commit>..HEAD -1 自动推导出下一次提交并展示。"
+              },
+              "note": { "type": "string", "description": "这一刻在认知上发生了什么变化（发现了什么、为什么改了证据等级）" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

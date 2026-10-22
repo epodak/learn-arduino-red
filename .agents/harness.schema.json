@@ -1,0 +1,338 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://agents.local/schemas/harness.schema.json",
+  "title": "Verification Harness",
+  "description": "验证工装台数据契约：验证阶梯（agent 能自己看到多少）× 功能地图（agent 怎么走到现场）× 失败模式台账（agent 犯过什么错）。",
+  "type": "object",
+  "required": [
+    "version",
+    "project",
+    "ladder",
+    "features"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "project": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string"
+    },
+    "updated": {
+      "type": "string",
+      "description": "YYYY-MM-DD，最近一次人工复核日期"
+    },
+    "ladder": {
+      "type": "object",
+      "description": "本项目 agent 的验证能力等级与其构成能力。",
+      "required": [
+        "level",
+        "capabilities"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4"
+          ],
+          "description": "L0 只读代码 / L1 可跑测试 / L2 可冷启动产品 / L3 可操作界面并读运行时证据 / L4 可从模糊描述自主复现"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/capability"
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/feature"
+      }
+    },
+    "failure_modes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/failure_mode"
+      }
+    }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "required": [
+        "id",
+        "level",
+        "title",
+        "how",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "run / test / drive / observe / reproduce 或自定义"
+        },
+        "level": {
+          "enum": [
+            "L1",
+            "L2",
+            "L3",
+            "L4"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "how": {
+          "type": "string",
+          "minLength": 1,
+          "description": "agent 照抄就能执行的命令或工具调用。严禁写成「用浏览器打开看看」这类无法照抄的描述。"
+        },
+        "status": {
+          "enum": [
+            "fact",
+            "infer",
+            "unknown",
+            "none"
+          ],
+          "description": "与 system-panorama 同一套证据词汇。fact = 真的跑通过并留下读数；none = 本项目不打算具备。"
+        },
+        "evidence": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "跑通时的原始输出片段，status=fact 时必填"
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "autonomy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "同事、用户、截图上会出现的土话。模糊 bug 描述靠它命中。"
+        },
+        "autonomy": {
+          "enum": [
+            "manual",
+            "review-diff",
+            "review-main",
+            "auto"
+          ],
+          "description": "允许 agent 在此功能上走到哪一步。受 lint 的 blind 检查约束，不得高于验证能力。"
+        },
+        "owner": {
+          "type": "string",
+          "description": "与 panorama 的 owner 同义：us / os / vendor / upstream ..."
+        },
+        "entry": {
+          "type": "object",
+          "required": [
+            "steps"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "steps": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              },
+              "description": "从冷启动到站在这个功能面前的完整步骤，agent 照做即可到达。"
+            },
+            "preconditions": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "surface": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "实现这个功能的文件/路由/组件路径，用于反向定位。lint 会检查真实存在。"
+        },
+        "verify": {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "enum": [
+                "executable",
+                "manual",
+                "none"
+              ],
+              "description": "executable = 有命令能跑出通过/失败；manual = 只能人眼判断；none = 目前无法验证"
+            },
+            "how": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "kind=executable 时必填，可直接执行的命令"
+            },
+            "expect": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "判定通过的具体依据，如 '3 passed' 或 'HTTP 201'"
+            },
+            "manual_check": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "人眼/截图判据"
+            }
+          }
+        },
+        "evidence_hooks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "运行时证据的取法：console 前缀、network 端点、trace 指标、日志 grep 模式。"
+        },
+        "panorama_nodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "对应的 system-panorama 节点 id。lint 的 crosslink 检查会校验其存在。"
+        },
+        "last_verified": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "at": {
+              "type": "string"
+            },
+            "by": {
+              "type": "string",
+              "description": "agent / human / ci"
+            },
+            "result": {
+              "enum": [
+                "pass",
+                "fail",
+                "partial"
+              ]
+            },
+            "note": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "failure_mode": {
+      "type": "object",
+      "required": [
+        "id",
+        "observed",
+        "rule",
+        "cases",
+        "status"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed": {
+          "type": "string",
+          "minLength": 1,
+          "description": "agent 实际干了什么错事，写行为不写评价"
+        },
+        "why": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "它为什么会这么干——规则要治的是这个"
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1,
+          "description": "一条可执行、可判定的规则"
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "触发这条规则的原始案例（PR/commit/会话）。没有案例的规则是教条。"
+        },
+        "check": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "怎么自动发现这条规则被违反了"
+        },
+        "promoted_to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "已固化进哪个 skill / 哪份文档的哪一节"
+        },
+        "status": {
+          "enum": [
+            "open",
+            "promoted",
+            "retired"
+          ]
+        }
+      }
+    }
+  }
+}
